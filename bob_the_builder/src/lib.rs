@@ -5,6 +5,7 @@ use glob::glob;
 use std::{
     fs::{self},
     path::{Path, PathBuf},
+    env
 };
 
 use cargo_toml::{
@@ -13,7 +14,15 @@ use cargo_toml::{
 };
 
 const CARGO_PATH: &str = "cargo";
-const PACKAGE_PREFIX: &str = "contracts/";
+const DEFAULT_PACKAGE_PREFIX: &str = "contracts/";
+
+/// Returns the PACKAGE_PREFIX environment variable that can be specified when
+/// running the docker image using the -e or --env option.
+/// Returns a default PACKAGE_PREFIX if the option is not specified.
+#[allow(clippy::ptr_arg)]
+fn get_package_prefix() -> String {
+    env::var("PACKAGE_PREFIX").unwrap_or_else(|_| DEFAULT_PACKAGE_PREFIX.to_string())
+}
 
 /// Checks if the given path is a Cargo project. This is needed
 /// to filter the glob results of a workspace member like `contracts/*`
@@ -44,6 +53,8 @@ pub fn build() {
 }
 
 pub fn build_workspace(workspace_members: &[String]) {
+    let package_prefix = get_package_prefix();
+
     let mut all_packages = workspace_members
         .iter()
         .map(|member| {
@@ -61,7 +72,7 @@ pub fn build_workspace(workspace_members: &[String]) {
 
     let contract_packages = all_packages
         .iter()
-        .filter(|p| p.starts_with(PACKAGE_PREFIX))
+        .filter(|p| p.starts_with(&package_prefix))
         .collect::<Vec<_>>();
 
     println!("Contracts to be built: {:?}", contract_packages);
